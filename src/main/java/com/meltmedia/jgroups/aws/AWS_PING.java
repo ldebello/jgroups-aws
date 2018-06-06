@@ -232,6 +232,17 @@ public class AWS_PING extends Discovery {
         return true;
     }
 
+    @Override
+    public Object down(Event evt) {
+        try {
+            log.info("Event: " + evt);
+            return super.down(evt);
+        } catch (Exception e) {
+            log.error("Error in down event", e);
+            throw e;
+        }
+    }
+
     /**
      * Fetches all of the cluster members found on EC2. The host portion of the
      * addresses are the private ip addresses of the matching nodes. The port
