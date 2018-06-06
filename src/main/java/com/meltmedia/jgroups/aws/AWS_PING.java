@@ -237,9 +237,9 @@ public class AWS_PING extends Discovery {
         try {
             log.info("Event: " + evt);
             return super.down(evt);
-        } catch (Exception e) {
-            log.error("Error in down event", e);
-            throw e;
+        } catch (Throwable t) {
+            log.error("Error in down event", t);
+            throw t;
         }
     }
 
@@ -252,6 +252,7 @@ public class AWS_PING extends Discovery {
     @Override
     protected void findMembers(final List<Address> members, boolean initial_discovery, final Responses responses) {
         try {
+            log.info("Finding members");
             final IpAddress physical_addr = (IpAddress) down(new Event(Event.GET_PHYSICAL_ADDRESS, local_addr));
             final PingData data = new PingData(local_addr, false, NameCache.get(local_addr), physical_addr);
             final PingHeader hdr = new PingHeader(PingHeader.GET_MBRS_REQ).clusterName(cluster_name);
@@ -272,9 +273,9 @@ public class AWS_PING extends Discovery {
                             down_prot.down(message);
                         }
                     });
-        } catch (Exception e) {
-            log.error("Error finding members", e);
-            throw e;
+        } catch (Throwable t) {
+            log.error("Error finding members", t);
+            throw t;
         }
     }
 
