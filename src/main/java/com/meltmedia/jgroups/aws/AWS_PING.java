@@ -1,17 +1,17 @@
 /**
- *   Copyright 2012 meltmedia
+ * Copyright 2012 meltmedia
  *
- *    Licensed under the Apache License, Version 2.0 (the "License");
- *    you may not use this file except in compliance with the License.
- *    You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS,
- *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *    See the License for the specific language governing permissions and
- *    limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.meltmedia.jgroups.aws;
 
@@ -119,181 +119,186 @@ import java.util.stream.Collectors;
  *
  */
 public class AWS_PING extends Discovery {
-  static {
-    try {
-      System.out.println("Registering AWS Ping protocol");
-      ClassConfigurator.addProtocol((short) 600, AWS_PING.class); // ID needs to be unique
-    } catch (Exception e) {
-      e.printStackTrace();
-      System.out.println("Error registering protocol");
-    }
-  }
-
-  @Property(description = "The AWS Credentials Chain Class to use when searching for the account.")
-  protected String credentials_provider_class = com.amazonaws.auth.DefaultAWSCredentialsProviderChain.class.getName();
-  @Property(description = "The AWS Access Key for the account to search.")
-  protected String access_key;
-  @Property(description = "The AWS Secret Key for the account to search.")
-  protected String secret_key;
-  @Property(description = "A semicolon delimited list of filters to search on. (name1=value1,value2;name2=value1,value2)")
-  protected String filters;
-  @Property(description = "A list of tags that identify this cluster.")
-  protected String tags;
-  @Property(description = "Number of additional ports to be probed for membership. A port_range of 0 does not "
-      + "probe additional ports. Example: initial_hosts=A[7800] port_range=0 probes A:7800, port_range=1 probes "
-      + "A:7800 and A:7801.  The default is 50.")
-  protected int port_range = 50;
-  @Property(description = "The port number being used for cluster membership.  The default is 7800.")
-  protected int port_number = 7800;
-  @Property(description = "Turns on AWS error message logging.")
-  private boolean log_aws_error_messages = false;
-
-  /**
-   * This is looked up using the endpoint http://instance-data/latest/dynamic/instance-identity/document
-   */
-  private InstanceIdentity instanceIdentity;
-
-  /**
-   * The Service for all AWS related stuff
-   */
-  private AmazonEC2 ec2;
-
-  /**
-   * Utility for expanding one ip address + port and range to multiple address:port
-   */
-  private IPAddressUtils ipAddressUtils;
-
-  /**
-   * Utility for working with tags
-   */
-  private TagsUtils tagUtils;
-
-  /**
-   * Utility for working with filters
-   */
-  private FilterUtils filterUtils;
-
-  /**
-   * Scans the environment for information about the AWS node that we are
-   * currently running on and parses the filters and tags.
-   */
-  public void init() throws Exception {
-    log.info("Starting init method ");
-    super.init();
-
-    log.info("Getting instance identity");
-    //get the instance identity
-    try (CloseableHttpClient client = HttpClients.createDefault()) {
-      this.instanceIdentity = InstanceIdentity.getIdentity(client);
+    static {
+        try {
+            System.out.println("Registering AWS Ping protocol");
+            ClassConfigurator.addProtocol((short) 600, AWS_PING.class); // ID needs to be unique
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Error registering protocol");
+        }
     }
 
-    log.info("Creating EC2 client");
-    //setup ec2 client
-    this.ec2 = EC2Factory.create(
-        instanceIdentity,
-        access_key,
-        secret_key,
-        credentials_provider_class,
-        new CredentialsProviderFactory(),
-        log_aws_error_messages);
+    @Property(description = "The AWS Credentials Chain Class to use when searching for the account.")
+    protected String credentials_provider_class = com.amazonaws.auth.DefaultAWSCredentialsProviderChain.class.getName();
+    @Property(description = "The AWS Access Key for the account to search.")
+    protected String access_key;
+    @Property(description = "The AWS Secret Key for the account to search.")
+    protected String secret_key;
+    @Property(description = "A semicolon delimited list of filters to search on. (name1=value1,value2;name2=value1,value2)")
+    protected String filters;
+    @Property(description = "A list of tags that identify this cluster.")
+    protected String tags;
+    @Property(description = "Number of additional ports to be probed for membership. A port_range of 0 does not "
+            + "probe additional ports. Example: initial_hosts=A[7800] port_range=0 probes A:7800, port_range=1 probes "
+            + "A:7800 and A:7801.  The default is 50.")
+    protected int port_range = 50;
+    @Property(description = "The port number being used for cluster membership.  The default is 7800.")
+    protected int port_number = 7800;
+    @Property(description = "Turns on AWS error message logging.")
+    private boolean log_aws_error_messages = false;
 
-    this.ipAddressUtils = new IPAddressUtils(port_number, port_range);
-    this.tagUtils = new TagsUtils(ec2, instanceIdentity, tags).validateTags();
-    this.filterUtils = new FilterUtils(filters, tagUtils);
+    /**
+     * This is looked up using the endpoint http://instance-data/latest/dynamic/instance-identity/document
+     */
+    private InstanceIdentity instanceIdentity;
 
-    log.info("Configured for instance: " + instanceIdentity.instanceId);
-    filterUtils.getAwsFilters().ifPresent(f -> log.info("Configured with filters [%s]", f));
-    tagUtils.getAwsTagNames().ifPresent(t -> log.info("Configured with tags [%s]", t));
-  }
+    /**
+     * The Service for all AWS related stuff
+     */
+    private AmazonEC2 ec2;
 
-  /**
-   * Stops this protocol.
-   */
-  @Override
-  public void stop() {
-    try {
-      new RuntimeException().printStackTrace();
-      log.info("Stopping AWS Ping");
-      if (ec2 != null) {
-        ec2.shutdown();
-      }
-    } finally {
-      super.stop();
-    }
-  }
+    /**
+     * Utility for expanding one ip address + port and range to multiple address:port
+     */
+    private IPAddressUtils ipAddressUtils;
 
-  /**
-   * Returns true.
-   *
-   * @return true
-   */
-  @Override
-  public boolean isDynamic() {
-    return true;
-  }
+    /**
+     * Utility for working with tags
+     */
+    private TagsUtils tagUtils;
 
-  /**
-   * Fetches all of the cluster members found on EC2. The host portion of the
-   * addresses are the private ip addresses of the matching nodes. The port
-   * numbers of the addresses are set to the port number plus all the ports in
-   * the range after that specified on this protocol.
-   */
-  @Override
-  protected void findMembers(final List<Address> members, boolean initial_discovery, final Responses responses) {
-    final IpAddress physical_addr = (IpAddress) down(new Event(Event.GET_PHYSICAL_ADDRESS, local_addr));
-    final PingData data = new PingData(local_addr, false, NameCache.get(local_addr), physical_addr);
-    final PingHeader hdr = new PingHeader(PingHeader.GET_MBRS_REQ).clusterName(cluster_name);
-    final List<IpAddress> clusterMembers = ipAddressUtils.expandClusterMemberPorts(getPrivateIpAddresses());
+    /**
+     * Utility for working with filters
+     */
+    private FilterUtils filterUtils;
 
-    clusterMembers.stream()
-        .filter(Objects::nonNull) //guard against nulls
-        .filter(address -> !address.getIpAddress().equals(physical_addr.getIpAddress())) //filter out self
-        .map(address -> new Message(address)
-            .setFlag(Message.Flag.INTERNAL, Message.Flag.DONT_BUNDLE, Message.Flag.OOB)
-            .putHeader(this.id, hdr).setBuffer(marshal(data)))
-        .forEach(message -> {
-          if(async_discovery_use_separate_thread_per_request) {
-            log.trace("%s: sending async discovery request to %s", local_addr, message.getDest());
-            down_prot.down(message);
-          } else {
-            log.trace("%s: sending discovery request to %s", local_addr, message.getDest());
-            down_prot.down(message);
-          }
-        });
-  }
+    /**
+     * Scans the environment for information about the AWS node that we are
+     * currently running on and parses the filters and tags.
+     */
+    public void init() throws Exception {
+        log.info("Starting init method ");
+        super.init();
 
-  /**
-   * Gets the list of private IP addresses found in AWS based on the filters and
-   * tag names defined.
-   *
-   * @return the list of private IP addresses found on AWS.
-   */
-  private List<String> getPrivateIpAddresses() {
-    // if there are aws tags configured, then look them up and create filters.
-    final List<Filter> filters = filterUtils.instanceTagNamesToFilters();
+        log.info("Getting instance identity");
+        //get the instance identity
+        try (CloseableHttpClient client = HttpClients.createDefault()) {
+            this.instanceIdentity = InstanceIdentity.getIdentity(client);
+        }
 
-    // if there are aws filters defined, add them to the list.
-    filterUtils.getAwsFilters().ifPresent(filters::addAll);
+        log.info("Creating EC2 client");
+        //setup ec2 client
+        this.ec2 = EC2Factory.create(
+                instanceIdentity,
+                access_key,
+                secret_key,
+                credentials_provider_class,
+                new CredentialsProviderFactory(),
+                log_aws_error_messages);
 
-    final DescribeInstancesRequest request = new DescribeInstancesRequest().withFilters(filters);
+        this.ipAddressUtils = new IPAddressUtils(port_number, port_range);
+        this.tagUtils = new TagsUtils(ec2, instanceIdentity, tags).validateTags();
+        this.filterUtils = new FilterUtils(filters, tagUtils);
 
-    if (log.isDebugEnabled()) {
-      log.debug("Describing AWS instances with the following filters [%s]", filters);
-      log.debug("Making AWS Request {%s}", request);
+        log.info("Configured for instance: " + instanceIdentity.instanceId);
+        filterUtils.getAwsFilters().ifPresent(f -> log.info("Configured with filters [%s]", f));
+        tagUtils.getAwsTagNames().ifPresent(t -> log.info("Configured with tags [%s]", t));
     }
 
-    // NOTE: the reservations group nodes together by when they were started. We
-    // need to dig through all of the reservations.
-    final List<String> result = ec2.describeInstances(request).getReservations().stream()
-        .flatMap(reservation -> reservation.getInstances().stream())
-        .map(Instance::getPrivateIpAddress)
-        .filter(Objects::nonNull)
-        .collect(Collectors.toList());
-
-    if (log.isDebugEnabled()) {
-      log.debug("Instances found [%s]", result);
+    /**
+     * Stops this protocol.
+     */
+    @Override
+    public void stop() {
+        try {
+            new RuntimeException().printStackTrace();
+            log.info("Stopping AWS Ping");
+            if (ec2 != null) {
+                ec2.shutdown();
+            }
+        } finally {
+            super.stop();
+        }
     }
 
-    return result;
-  }
+    /**
+     * Returns true.
+     *
+     * @return true
+     */
+    @Override
+    public boolean isDynamic() {
+        return true;
+    }
+
+    /**
+     * Fetches all of the cluster members found on EC2. The host portion of the
+     * addresses are the private ip addresses of the matching nodes. The port
+     * numbers of the addresses are set to the port number plus all the ports in
+     * the range after that specified on this protocol.
+     */
+    @Override
+    protected void findMembers(final List<Address> members, boolean initial_discovery, final Responses responses) {
+        try {
+            final IpAddress physical_addr = (IpAddress) down(new Event(Event.GET_PHYSICAL_ADDRESS, local_addr));
+            final PingData data = new PingData(local_addr, false, NameCache.get(local_addr), physical_addr);
+            final PingHeader hdr = new PingHeader(PingHeader.GET_MBRS_REQ).clusterName(cluster_name);
+            final List<IpAddress> clusterMembers = ipAddressUtils.expandClusterMemberPorts(getPrivateIpAddresses());
+
+            clusterMembers.stream()
+                    .filter(Objects::nonNull) //guard against nulls
+                    .filter(address -> !address.getIpAddress().equals(physical_addr.getIpAddress())) //filter out self
+                    .map(address -> new Message(address)
+                            .setFlag(Message.Flag.INTERNAL, Message.Flag.DONT_BUNDLE, Message.Flag.OOB)
+                            .putHeader(this.id, hdr).setBuffer(marshal(data)))
+                    .forEach(message -> {
+                        if (async_discovery_use_separate_thread_per_request) {
+                            log.trace("%s: sending async discovery request to %s", local_addr, message.getDest());
+                            down_prot.down(message);
+                        } else {
+                            log.trace("%s: sending discovery request to %s", local_addr, message.getDest());
+                            down_prot.down(message);
+                        }
+                    });
+        } catch (Exception e) {
+            log.error("Error finding members", e);
+            throw e;
+        }
+    }
+
+    /**
+     * Gets the list of private IP addresses found in AWS based on the filters and
+     * tag names defined.
+     *
+     * @return the list of private IP addresses found on AWS.
+     */
+    private List<String> getPrivateIpAddresses() {
+        // if there are aws tags configured, then look them up and create filters.
+        final List<Filter> filters = filterUtils.instanceTagNamesToFilters();
+
+        // if there are aws filters defined, add them to the list.
+        filterUtils.getAwsFilters().ifPresent(filters::addAll);
+
+        final DescribeInstancesRequest request = new DescribeInstancesRequest().withFilters(filters);
+
+        if (log.isDebugEnabled()) {
+            log.debug("Describing AWS instances with the following filters [%s]", filters);
+            log.debug("Making AWS Request {%s}", request);
+        }
+
+        // NOTE: the reservations group nodes together by when they were started. We
+        // need to dig through all of the reservations.
+        final List<String> result = ec2.describeInstances(request).getReservations().stream()
+                .flatMap(reservation -> reservation.getInstances().stream())
+                .map(Instance::getPrivateIpAddress)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        if (log.isDebugEnabled()) {
+            log.debug("Instances found [%s]", result);
+        }
+
+        return result;
+    }
 }
