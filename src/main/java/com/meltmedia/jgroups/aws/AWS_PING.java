@@ -120,7 +120,13 @@ import java.util.stream.Collectors;
  */
 public class AWS_PING extends Discovery {
   static {
-    ClassConfigurator.addProtocol((short) 600, AWS_PING.class); // ID needs to be unique
+    try {
+      System.out.println("Registering AWS Ping protocol");
+      ClassConfigurator.addProtocol((short) 600, AWS_PING.class); // ID needs to be unique
+    } catch (Exception e) {
+      e.printStackTrace();
+      System.out.println("Error registering protocol");
+    }
   }
 
   @Property(description = "The AWS Credentials Chain Class to use when searching for the account.")
@@ -172,13 +178,16 @@ public class AWS_PING extends Discovery {
    * currently running on and parses the filters and tags.
    */
   public void init() throws Exception {
+    log.info("Starting init method ");
     super.init();
 
+    log.info("Getting instance identity");
     //get the instance identity
     try (CloseableHttpClient client = HttpClients.createDefault()) {
       this.instanceIdentity = InstanceIdentity.getIdentity(client);
     }
 
+    log.info("Creating EC2 client");
     //setup ec2 client
     this.ec2 = EC2Factory.create(
         instanceIdentity,
@@ -203,6 +212,8 @@ public class AWS_PING extends Discovery {
   @Override
   public void stop() {
     try {
+      new RuntimeException().printStackTrace();
+      log.info("Stopping AWS Ping");
       if (ec2 != null) {
         ec2.shutdown();
       }

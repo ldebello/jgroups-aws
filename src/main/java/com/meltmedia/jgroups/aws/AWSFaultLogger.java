@@ -37,7 +37,7 @@ class AWSFaultLogger implements Unmarshaller<AmazonServiceException, Node>, Requ
       xform.transform(src, result);
       log.error("AWS Exception: [%s] For request [%s]", writer, request.get());
     } catch (Throwable t) {
-      log.debug("Failed to log xml soap fault message.", t);
+      log.error("Failed to log xml soap fault message.", t);
     } finally {
       request.remove();
     }

@@ -29,10 +29,11 @@ public class CredentialsProviderFactory {
       final Class<?> credsProviderClazz = Util.loadClass(credentialProviderClass, getClass());
       return (AWSCredentialsProvider) credsProviderClazz.newInstance();
     } catch (ClassNotFoundException e) {
+      log.error("unable to load credentials provider class " + credentialProviderClass, e);
       throw new Exception("unable to load credentials provider class " + credentialProviderClass);
     } catch (InstantiationException e) {
       log.error("an instance of " + credentialProviderClass + " could not be created. Please check that it implements" +
-          " interface AWSCredentialsProvider and that is has a public empty constructor !");
+          " interface AWSCredentialsProvider and that is has a public empty constructor !", e);
       throw e;
     }
   }

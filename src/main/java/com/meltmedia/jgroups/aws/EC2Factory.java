@@ -8,6 +8,8 @@ import com.amazonaws.internal.StaticCredentialsProvider;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2Client;
 import com.amazonaws.transform.Unmarshaller;
+import org.jgroups.logging.Log;
+import org.jgroups.logging.LogFactory;
 import org.w3c.dom.Node;
 
 import java.lang.reflect.Field;
@@ -19,6 +21,9 @@ import java.util.List;
  */
 @SuppressWarnings("deprecation")
 public class EC2Factory {
+
+  private static final Log log = LogFactory.getLog(EC2Factory.class);
+
   private static String EC2_ENDPOINT_TEMPLATE = "ec2.{REGION}.amazonaws.com";
 
   public static AmazonEC2 create(
@@ -29,6 +34,7 @@ public class EC2Factory {
       final CredentialsProviderFactory credentialsProviderFactory,
       final Boolean logAwsErrorMessages) throws Exception {
 
+    log.info("Setuping EC2 client");
     final AmazonEC2 ec2 = setupEC2Client(
         instanceIdentity.region,
         accessKey,
@@ -51,7 +57,14 @@ public class EC2Factory {
       final CredentialsProviderFactory credentialsProviderFactory) throws Exception {
 
     final String endpoint = EC2_ENDPOINT_TEMPLATE.replace("{REGION}", region);
-    final AWSCredentialsProvider credentialsProvider = accessKey == null && secretKey == null ?
+
+    final boolean useDynamicCredentialsProvider = accessKey == null && secretKey == null;
+
+    if (useDynamicCredentialsProvider) {
+      log.info("Using dynamic credentials");
+    }
+
+    final AWSCredentialsProvider credentialsProvider = useDynamicCredentialsProvider ?
         credentialsProviderFactory.createCredentialsProvider(credentialsProviderClass) :
         new StaticCredentialsProvider(new BasicAWSCredentials(accessKey, secretKey));
 
@@ -74,6 +87,7 @@ public class EC2Factory {
       exceptionUnmarshallers.add(0, new AWSFaultLogger());
       ((AmazonEC2Client) ec2).addRequestHandler((RequestHandler) exceptionUnmarshallers.get(0));
     } catch (Throwable t) {
+      log.error("Error setuping AWS Exception logging", t);
       //I don't care about this.
     } finally {
       if (exceptionUnmarshallersField != null) {

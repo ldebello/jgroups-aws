@@ -8,6 +8,8 @@ import org.apache.http.HttpStatus;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.util.EntityUtils;
+import org.jgroups.logging.Log;
+import org.jgroups.logging.LogFactory;
 
 import java.io.IOException;
 import java.net.URI;
@@ -21,6 +23,8 @@ public class InstanceIdentity {
   private static final String INSTANCE_IDENTITY_URL = String.format("http://%s/latest/dynamic/instance-identity/document", INSTANCE_DATA);
 
   private static URI INSTANCE_IDENTITY_URI;
+
+  private static Log log = LogFactory.getLog(InstanceIdentity.class);
 
   static {
     try {
@@ -77,6 +81,7 @@ public class InstanceIdentity {
       }
       return EntityUtils.toString(response.getEntity());
     } catch (Exception e) {
+      log.error("failed to get instance identity", e);
       throw new IOException("failed to get instance identity", e);
     }
   }
